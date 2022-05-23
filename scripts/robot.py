@@ -1,14 +1,19 @@
+import os
+import json
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
+json_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "config/config.json")))
+layers = json.load(json_file)["model"]
+json_file.close()
 
 class Predictor(nn.Module):
     def __init__(self,
-                 dim_observation: int = 3,
-                 dim_action: int = 2,
-                 dim_hidden: int = 5) -> None:
+                 dim_observation: int = layers["dim_observation"],
+                 dim_action: int = layers["dim_action"],
+                 dim_hidden: int = layers["dim_hidden"]) -> None:
         super().__init__()
 
         self.dim_observation = dim_observation
@@ -28,7 +33,7 @@ class Predictor(nn.Module):
 
 
 class Robot():
-    def __init__(self, predictor: nn.Module) -> None:
+    def __init__(self, predictor: nn.Module = Predictor()) -> None:
         """
         Pose = (x, y, th)
         """

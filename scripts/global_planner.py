@@ -10,7 +10,7 @@ class Global_Planner():
         assert neighborhood in (4, 8), "Neighborhood should be 4 or 8"
 
         # TODO: Delaunay triangulation: matrix -> graph
-        self.map = obstacle_map
+        self.map = obstacle_map.astype(bool)
         self.radius = target_radius
         self._shape_x = obstacle_map.shape[0]
         self._shape_y = obstacle_map.shape[1]
@@ -80,7 +80,7 @@ class Global_Planner():
                 return costs[pos], route
 
             for neighbour in self._get_neighbours(pos):
-                if self.map[neighbour] == 255:
+                if self.map[neighbour]:
                     continue
                 new_cost = costs[pos] + self._cost_function(pos, neighbour)
                 if new_cost < costs.get(neighbour, np.inf):
