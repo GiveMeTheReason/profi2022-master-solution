@@ -2,35 +2,62 @@
 
 import time
 from math import sin
+import numpy as np
+import cv2
 
 import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Image
+from nav_msgs.msg import Odometry
 
-import cv2
+import tf
 from cv_bridge import CvBridge, CvBridgeError
+from tf.transformations import euler_from_quaternion
 
 class SimpleMover():
 
     def __init__(self):
+        
         rospy.init_node('simple_mover', anonymous=True)
         rospy.on_shutdown(self.shutdown)
+        self.listener = tf.TransformListener()
 
         self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         rospy.Subscriber("diff_drive_robot/camera1/image_raw", Image, self.camera_cb)
+        rospy.Subscriber('odom', Odometry, self.odometry_callback )
         self.rate = rospy.Rate(30)
-
         self.cv_bridge = CvBridge()
+        
 
+        self.pos = np.array([0,0,0])
 
+    def odometry_callback(self, msg) :
+
+        # try:
+        #     (trans,rot) = self.listener.lookupTransform( '/base', '/odom', rospy.Time(0))
+        # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        #     continue
+
+        self.pos = np.zeros(3)
+        self.pos[0] = msg.pose.pose.position.x * 1
+        self.pos[1] = msg.pose.pose.position.y * 1
+        quater = msg.pose.pose.orientation
+        orientation_list = [quater.x, quater.y, quater.z, quater.w]
+        self.pos[2] = euler_from_quaternion(orientation_list)[2]
+        print self.pos 
+        
     def camera_cb(self, msg):
-
         try:
             cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
 
         except CvBridgeError, e:
             rospy.logerr("CvBridge Error: {0}".format(e))
 
+        arrow_len = 30
+        pt = self.pos.copy()
+        pt[2] = -pt[2]
+        pt2 = pt[:-1] + arrow_len * np.array(np.cos(pt[2]), np.sin(pt[2]))
+        cv2.arrowedLine(cv_image, tuple(pt[:-1].astype(np.int32)), tuple(pt2.astype(np.int32)), (0,255,0), 3)
         self.show_image(cv_image)
 
 
