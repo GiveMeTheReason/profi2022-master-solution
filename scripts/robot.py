@@ -22,7 +22,12 @@ class Predictor(nn.Module):
         )
 
     def forward(self, position: torch.FloatTensor, action: torch.FloatTensor) -> torch.FloatTensor:
-        x = torch.cat((position, action), )
+        if not isinstance(position, torch.FloatTensor):
+            position = torch.tensor(position, dtype=torch.float32)
+        if not isinstance(action, torch.FloatTensor):
+            action = torch.tensor(action, dtype=torch.float32)
+        
+        x = torch.cat((position, action))
         x = self.layers(x) + x[:self._dim_observation]
         return x
 

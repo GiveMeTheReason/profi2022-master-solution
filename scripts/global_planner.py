@@ -3,7 +3,6 @@ import numpy as np
 
 
 class Global_Planner():
-    
     def __init__(self,
                  obstacle_map: np.integer,
                  target_radius: int = 0,
