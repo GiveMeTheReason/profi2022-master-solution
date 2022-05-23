@@ -1,0 +1,23 @@
+<package format="2">
+  <version>1.0.0</version>
+  <name>profi2022_master_solution</name>
+  <description>ROS package example for yandex.ru/profi</description>
+
+  <author     email="likerobotics@gmail.com">Islam Bzhikhatlov</author>
+  <maintainer email="likerobotics@gmail.com">Islam Bzhikhatlov</maintainer>
+
+  <license>Apache License, Version 2.0</license>
+
+  <!-- TODO <url type="website">http:// ... </url> -->
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+
+  <export>
+  </export>
+
+</package>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <node name="diff_drive_robot_simple_move" pkg="profi2022_master_solution" type="simple_move.py" output="screen" />
+
+</launch>
