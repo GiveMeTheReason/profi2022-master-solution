@@ -1,34 +1,29 @@
-import os
-import json
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-json_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "config/config.json")))
-layers = json.load(json_file)["model"]
-json_file.close()
 
 class Predictor(nn.Module):
     def __init__(self,
-                 dim_observation: int = layers["dim_observation"],
-                 dim_action: int = layers["dim_action"],
-                 dim_hidden: int = layers["dim_hidden"]) -> None:
+                 dim_observation: int = 3,
+                 dim_action: int = 2,
+                 dim_hidden: int = 10) -> None:
         super().__init__()
 
-        self.dim_observation = dim_observation
-        self.dim_action = dim_action
-        self.dim_hidden = dim_hidden
+        self._dim_observation = dim_observation
+        self._dim_action = dim_action
+        self._dim_hidden = dim_hidden
 
         self.layers = nn.Sequential(
-            nn.Linear(self.dim_observation + self.dim_action, self.dim_hidden),
+            nn.Linear(self._dim_observation + self._dim_action, self._dim_hidden),
             nn.ReLU(),
-            nn.Linear(self.dim_hidden, self.dim_observation)
+            nn.Linear(self._dim_hidden, self._dim_observation)
         )
 
-    def forward(self, position: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
-        x = torch.cat(position, action)
-        x = self.layers(x) + x[:self.dim_observation]
+    def forward(self, position: torch.FloatTensor, action: torch.FloatTensor) -> torch.FloatTensor:
+        x = torch.cat((position, action), )
+        x = self.layers(x) + x[:self._dim_observation]
         return x
 
 
@@ -37,29 +32,24 @@ class Robot():
         """
         Pose = (x, y, th)
         """
-        self.prev_pose = (None, None, None)
-        self.pose = (None, None, None)
+        self.prev_pose = torch.tensor([0, 0, 0], dtype=torch.float32)
+        self.pose = torch.tensor([0, 0, 0], dtype=torch.float32)
         self.predictor = predictor
 
         self._criterion = nn.HuberLoss(reduction='sum', delta=10.0)
-        self._optimizer = optim.Adadelta(self.predictor.parameters())
+        self._optimizer = optim.Adadelta(self.predictor.parameters(), lr=1.0)
 
-    def set_pose(self, pose: tuple(float)) -> None:
-        assert isinstance(pose, (tuple, list, np.ndarray))
+    def set_pose(self, pose: torch.FloatTensor) -> None:
+        assert isinstance(pose, (tuple, list, np.ndarray, torch.FloatTensor))
         assert len(pose) == 3
-
+        
         self.prev_pose = self.pose
-        self.pose = tuple(map(float, pose))
+        self.pose = pose.type(torch.float32) if isinstance(pose, torch.FloatTensor) else torch.tensor(pose, dtype=torch.float32)
 
-    def transition_function(self, pose: tuple(float), action: tuple(float)):
-        assert isinstance(pose, (tuple, list, np.ndarray))
-        assert isinstance(action, (tuple, list, np.ndarray))
-        assert len(pose) == 3
-        assert len(action) == 2
-
+    def transition_function(self, pose: torch.FloatTensor, action: torch.FloatTensor) -> torch.FloatTensor:
         return self.predictor(pose, action)
 
-    def update_model(self, prediction: torch.Tensor, true_value: torch.Tensor) -> None:
+    def update_model(self, prediction: torch.FloatTensor, true_value: torch.FloatTensor) -> None:
         self._optimizer.zero_grad()
         loss = self._criterion(prediction, true_value)
         loss.backward()

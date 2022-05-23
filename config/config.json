@@ -16,6 +16,6 @@
     {
         "dim_observation": 3,
         "dim_action": 2,
-        "dim_hidden": 5
+        "dim_hidden": 10
     }
 }
