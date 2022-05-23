@@ -3,6 +3,7 @@ import numpy as np
 
 
 class Global_Planner():
+    
     def __init__(self,
                  obstacle_map: np.integer,
                  target_radius: int = 0,
@@ -25,7 +26,7 @@ class Global_Planner():
         return 7
 
     def _heuristic_function(self, position: tuple[int, int], target: tuple[int, int]) -> int:
-        x = abs(position[0] - target[0])
+        x = abs(position[0] - target[0]
         y = abs(position[1] - target[1])
         if x + y == 0:
             return 0

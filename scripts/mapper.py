@@ -1,12 +1,16 @@
 import cv2
+import numpy as np
+
+import rospy
+import rospkg
+import json
+
+from utils import wrap_angle
 
 class Mapper():
     """Creates static map and estimates robot position"""
     def __init__(self):
         rp = rospkg.RosPack()
-        self.cv_bridge = CvBridge()
-
-        self.cv_robot_pose_pub = rospy.Publisher('cv/robot_pose', Pose, queue_size=1 )
 
         json_file = open(rp.get_path("profi2022_master_solution") + "/config/colors.json")
         self.colors = json.load(json_file)
@@ -28,10 +32,9 @@ class Mapper():
         self.floor = np.array(self.colors["floor"][::-1])
 
 
-    def static_map(self, msg):
+    def static_map(self, img):
         
         """Create static map"""
-        img = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
         self.map = np.zeros_like(img[:, :, 0])
 
         # walls
@@ -71,6 +74,7 @@ class Mapper():
         self.find_targets(sock_center_mask)
         self.map_targets()
         self.make_cost_map(self.map)
+        # make it out if class
         self.robot_position(img)
 
 
@@ -127,72 +131,61 @@ class Mapper():
     # make publishing out of func. Create subscriber and publisher here, 
     # and manually publish robot position after getting robot position
 
-    def robot_position(self, img):
 
-        robot_pose_msg = Pose()
-
-        robot_mask = np.all((img > self.robot - self.tolerance) * \
-            (img < self.robot + self.tolerance), axis=2)
-
-        hull = cv2.findContours(robot_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0][:,-1]
+class RobotLocalization :
     
-        mom = cv2.moments(hull)
-        if mom['m00'] == 0 :
-            mom['m00'] += 1e-5
-        x_pos, y_pos = round(mom['m10'] / mom['m00']), round(mom['m01'] / mom['m00'])
 
-        # print( 'robot pose : (', x_pos, y_pos, angle,')' )
-        self.pos[:-1] = np.array([x_pos, y_pos])
+def robot_position( img ):
 
-        robot_pose_msg.position.x = x_pos
-        robot_pose_msg.position.y = y_pos
-        robot_pose_msg.position.z = 0
-        robot_pose_msg.orientation = Quaternion(*tf_conversions.transformations.quaternion_from_euler(0,0,self.pos[-1]))
+    robot_mask = np.all((img > self.robot - self.tolerance) * \
+        (img < self.robot + self.tolerance), axis=2)
 
-        self.cv_robot_pose_pub.publish(robot_pose_msg)
-        return self.pos.copy()
+    hull = cv2.findContours(robot_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0][:,-1]
 
-    def robot_position_with_angle(self, img):  
-        
-        robot_pose_msg = Pose()
-        angle_win = np.pi/6
-        prev_pos = self.pos.copy()
+    mom = cv2.moments(hull)
+    if mom['m00'] == 0 :
+        mom['m00'] += 1e-5
+    x_pos, y_pos = round(mom['m10'] / mom['m00']), round(mom['m01'] / mom['m00'])
 
-        robot_mask = np.all((img > self.robot - self.tolerance) * \
-            (img < self.robot + self.tolerance), axis=2)
+    # print( 'robot pose : (', x_pos, y_pos, angle,')' )
+    self.pos[:-1] = np.array([x_pos, y_pos])
 
-        hull = cv2.findContours(robot_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0][:,-1]
-        _, (height, width), angle = cv2.minAreaRect(hull)
-        angle = np.deg2rad(angle)
-        if height < width:
-            angle += np.pi/2
-            angle = wrap_angle(angle)
+    return self.pos.copy()
 
-        mom = cv2.moments(hull)
-        if mom['m00'] == 0 :
-            mom['m00'] += 1e-5
-        x_pos, y_pos = round(mom['m10'] / mom['m00']), round(mom['m01'] / mom['m00'])
+def robot_position_with_angle(self, img):  
+    
+    angle_win = np.pi/6
+    prev_pos = self.pos.copy()
 
-        d_angle = abs(self.pos[2] - angle) 
+    robot_mask = np.all((img > self.robot - self.tolerance) * \
+        (img < self.robot + self.tolerance), axis=2)
+
+    hull = cv2.findContours(robot_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0][:,-1]
+    _, (height, width), angle = cv2.minAreaRect(hull)
+    angle = np.deg2rad(angle)
+    if height < width:
+        angle += np.pi/2
+        angle = wrap_angle(angle)
+
+    mom = cv2.moments(hull)
+    if mom['m00'] == 0 :
+        mom['m00'] += 1e-5
+    x_pos, y_pos = round(mom['m10'] / mom['m00']), round(mom['m01'] / mom['m00'])
+
+    d_angle = abs(self.pos[2] - angle) 
+    if d_angle > np.pi :
+        d_angle = 2*np.pi - d_angle
+    if d_angle > angle_win :
+        angle += np.pi
+        angle = wrap_angle(angle)
+        d_angle = abs(self.pos[2] - angle)
         if d_angle > np.pi :
             d_angle = 2*np.pi - d_angle
-        if d_angle > angle_win :
-            angle += np.pi
-            angle = wrap_angle(angle)
-            d_angle = abs(self.pos[2] - angle)
-            if d_angle > np.pi :
-                d_angle = 2*np.pi - d_angle
-            # print ('angle = ', angle, 'init_angle = ', self.pos[2], 'd_angle = ', d_angle)
-        # print('final angle = ', angle)
-            
+        # print ('angle = ', angle, 'init_angle = ', self.pos[2], 'd_angle = ', d_angle)
+    # print('final angle = ', angle)
+        
 
-        # print( 'robot pose : (', x_pos, y_pos, angle,')' )
-        self.pos = np.array([x_pos, y_pos, angle])
+    # print( 'robot pose : (', x_pos, y_pos, angle,')' )
+    self.pos = np.array([x_pos, y_pos, angle])
 
-        robot_pose_msg.position.x = x_pos
-        robot_pose_msg.position.y = y_pos
-        robot_pose_msg.position.z = 0
-        robot_pose_msg.orientation = Quaternion(*tf_conversions.transformations.quaternion_from_euler(0,0, angle))
-
-        self.cv_robot_pose_pub.publish(robot_pose_msg)
-        return self.pos.copy()
+    return self.pos.copy()
