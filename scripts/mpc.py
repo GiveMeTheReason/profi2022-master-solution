@@ -3,7 +3,7 @@ import scipy
 
 
 class MPC():
-    def __init__(self, agent, dt: float, horizon: int = 5, weights: list = [0.1, 0.1, 8, 8]) -> None:
+    def __init__(self, agent, dt: float, horizon: int = 5, weights: list = [1, 1, 1, 1]) -> None:
         self.agent = agent
         self.dt = dt
         self.horizon = horizon

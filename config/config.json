@@ -17,5 +17,11 @@
         "dim_observation": 3,
         "dim_action": 2,
         "dim_hidden": 10
+    },
+    "mpc":
+    {
+        "dt": 0.033,
+        "horizon": 5,
+        "weights": [0.1, 0.1, 8, 8]
     }
 }
