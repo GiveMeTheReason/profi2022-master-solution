@@ -102,9 +102,6 @@ class Mapper():
     # and manually publish robot position after getting robot position
 
 
-class RobotLocalization :
-    
-
 def robot_position( img ):
 
     robot_mask = np.all((img > self.robot - self.tolerance) * \

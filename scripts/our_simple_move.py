@@ -5,23 +5,13 @@ import numpy as np
 import cv2
 import json
 import os
-import sys
-from pathlib import Path
-
-# REP_PATH = Path(os.getenv('CAM_22_ROS'))
-PYTHON_PATHS = [ '/usr/lib/python3/dist-packages', '/usr/lib/python3', '/usr/local/lib/python3.6/dist-packages' ]
-for path in PYTHON_PATHS:
-    sys.path.insert(0, path)
-
-print (sys.path)
 
 import rospy
-from geometry_msgs.msg import Twist
-from std_msgs.msg import Bool
+from geometry_msgs.msg import Twist, Bool
 from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 
-# import tf
+import tf
 from cv_bridge import CvBridge, CvBridgeError
 from tf.transformations import euler_from_quaternion
 
@@ -97,12 +87,14 @@ class Simple_KFC_bAssket():
 
         self.pos[2] = wrap_angle(np.arctan2(n_vec[1], n_vec[0]))
          
+        print self.pos
+
 
     def camera_cb(self, msg):
         try:
             cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
 
-        except CvBridgeError as e:
+        except CvBridgeError, e:
             rospy.logerr("CvBridge Error: {0}".format(e))
 
         arrow_len = 30
