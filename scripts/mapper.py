@@ -1,20 +1,12 @@
 import cv2
 import numpy as np
 
-import rospy
-import rospkg
-import json
-
 from utils import wrap_angle
 
 class Mapper():
     """Creates static map and estimates robot position"""
-    def __init__(self):
-        rp = rospkg.RosPack()
-
-        json_file = open(rp.get_path("profi2022_master_solution") + "/config/colors.json")
-        self.colors = json.load(json_file)
-        json_file.close()
+    def __init__(self, colors):
+        self.colors = colors
 
         self.unpack_colors(self.colors)
         self.target = {}
@@ -72,7 +64,6 @@ class Mapper():
         self.map[sock_center_mask] = 255
 
         self.find_targets(sock_center_mask)
-        self.map_targets()
         self.make_cost_map(self.map)
         # make it out if class
         self.robot_position(img)
@@ -92,7 +83,7 @@ class Mapper():
     def find_targets(self, sock_mask):
         sock_centers = cv2.findContours(sock_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
 
-        self.target = {}
+        self.targets = []
         target_mean_diam = 0
         for i, center in enumerate(sock_centers):
             mom = cv2.moments(center)
@@ -101,32 +92,11 @@ class Mapper():
             cy, cx = round(mom['m10'] / mom['m00']), round(mom['m01'] / mom['m00'])
             _, rad = cv2.minEnclosingCircle(center)
             target_mean_diam += rad
-            self.target[str(i)] = [int(cx), int(cy)]
-        self.target_mean_diam = int(round(2 * target_mean_diam / len(self.target.keys())))
+            self.targets.append([int(cx), int(cy)])
+        self.targets = np.array(self.targets)
 
-        self.passed_targets = {}
-        for key in self.target.keys():
-            self.passed_targets[key] = False
+        self.target_mean_diam = int(round(2 * target_mean_diam / len(self.targets)))
 
-
-    def pass_targets(self, pos):
-        min_dist = 1e9
-        for key in self.target.keys():
-            dist = abs(pos[0] - self.target[key][0]) + abs(pos[1] - self.target[key][1])
-            if dist < min_dist:
-                min_dist = dist
-                near_key = key
-        self.passed_targets[near_key] = True
-
-
-    def map_targets(self):
-        self.map_target = np.zeros_like(self.map)
-        for key in self.target.keys():
-            if self.passed_targets[key] == False:
-                self.map_target[self.target[key][0], self.target[key][1]] = 255
-        d = 2 * self.target_mean_diam + 1
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (d, d))
-        self.map_target[(cv2.dilate(self.map_target.astype(np.uint8), kernel)>0) * (self.map==0)] = 255
 
     # make publishing out of func. Create subscriber and publisher here, 
     # and manually publish robot position after getting robot position

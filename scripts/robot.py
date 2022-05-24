@@ -5,6 +5,7 @@ import torch.optim as optim
 
 
 class Predictor(nn.Module):
+    
     def __init__(self,
                  dim_observation: int = 3,
                  dim_action: int = 2,
@@ -33,6 +34,7 @@ class Predictor(nn.Module):
 
 
 class Robot():
+    
     def __init__(self, predictor: nn.Module = Predictor()) -> None:
         """
         Pose = (x, y, th)
@@ -59,3 +61,5 @@ class Robot():
         loss = self._criterion(prediction, true_value)
         loss.backward()
         self._optimizer.step()
+
+    
