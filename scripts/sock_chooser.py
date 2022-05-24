@@ -2,6 +2,7 @@ import numpy as np
 
 
 class Sock_Chooser():
+    
     def __init__(self, socks_array: np.integer) -> None:
         assert isinstance(socks_array, np.ndarray)
 

@@ -1,7 +1,6 @@
 import numpy as np
 
-
-def wrap_angle(angle: float) -> float:
+def wrap_angle(angle) :
     """
     Wraps the given angle to the range [-pi, +pi].
     :param angle: The angle (in rad) to wrap (can be unbounded).
