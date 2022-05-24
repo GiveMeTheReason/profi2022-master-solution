@@ -1,6 +1,6 @@
 import heapq
 import numpy as np
-
+from typing import Tuple, Dict
 
 class Global_Planner():
     def __init__(self,
@@ -16,22 +16,22 @@ class Global_Planner():
         self._shape_y = obstacle_map.shape[1]
         self.neighborhood = neighborhood
 
-    def _distance_metric(self, point_1: tuple[int, int], point_2: tuple[int, int]) -> float:
+    def _distance_metric(self, point_1: Tuple[int, int], point_2: Tuple[int, int]) -> float:
         return abs(point_1[0] - point_2[0]) + abs(point_1[1] - point_2[1])
 
-    def _cost_function(self, position: tuple[int, int], neighbour: tuple[int, int]) -> int:
+    def _cost_function(self, position: Tuple[int, int], neighbour: Tuple[int, int]) -> int:
         if self._distance_metric(position, neighbour) == 1:
             return 5
         return 7
 
-    def _heuristic_function(self, position: tuple[int, int], target: tuple[int, int]) -> int:
+    def _heuristic_function(self, position: Tuple[int, int], target: Tuple[int, int]) -> int:
         x = abs(position[0] - target[0])
         y = abs(position[1] - target[1])
         if x + y == 0:
             return 0
         return int(5 * (x + y) - 7 * (x * y) / (x + y) - 1)
 
-    def _get_neighbours(self, position: tuple[int, int]) -> list:
+    def _get_neighbours(self, position: Tuple[int, int]) -> list:
         if self.neighborhood == 8:
             return [(i, j)
                 for i in range(position[0] - 1, position[0] + 2)
@@ -47,7 +47,7 @@ class Global_Planner():
                    (i < self._shape_x) and (j < self._shape_y) and
                    (abs(position[0] - i) + abs(position[1] - j) == 1)]
 
-    def find_route(self, start: tuple[int, int], target: tuple[int, int]) -> tuple[int, list]:
+    def find_route(self, start: Tuple[int, int], target: Tuple[int, int]) -> Tuple[int, list]:
         """
         A-star algorithm
         """
@@ -58,8 +58,8 @@ class Global_Planner():
         start = tuple(map(int, start))
         target = tuple(map(int, target))
 
-        costs: dict[tuple[int, int], int] = {}
-        parents: dict[tuple[int, int], tuple[int, int]] = {}
+        costs: Dict[Tuple[int, int], int] = {}
+        parents: Dict[Tuple[int, int], Tuple[int, int]] = {}
         costs[start] = 0
         parents[start] = start
 

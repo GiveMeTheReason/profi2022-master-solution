@@ -1,5 +1,5 @@
 import numpy as np
-
+from typing import List
 
 class Sock_Chooser():
     
@@ -19,7 +19,7 @@ class Sock_Chooser():
             return np.argmin(dist)
         return np.argmin(dist[self.is_taken == False])
 
-    def get_untaken(self) -> list[int]:
+    def get_untaken(self) -> List[int]:
         return [*np.where(self.is_taken == False)[0]]
 
     def take_sock(self, position: np.ndarray) -> None:

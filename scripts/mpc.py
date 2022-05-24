@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-
+from typing import Tuple, List
 
 class MPC():
     def __init__(self, agent, dt: float, horizon: int = 5, weights: list = [1, 1, 1, 1]) -> None:
@@ -35,7 +35,7 @@ class MPC():
 
         return cost
 
-    def calc_next_control(self) -> tuple[float, float]:
+    def calc_next_control(self) -> Tuple[float, float]:
         
         x0 = np.array([0] * 2 * self.horizon)
         bounds = tuple(zip(-0.5, 0.5))
@@ -43,5 +43,5 @@ class MPC():
 
         return res.x[0], res.x[1]
 
-    def set_route(self, route: list[tuple]) -> None:
+    def set_route(self, route: List[tuple]) -> None:
         self.route = np.array(route, dtype=np.float32)

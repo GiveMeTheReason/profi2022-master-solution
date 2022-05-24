@@ -9,19 +9,19 @@ class Mapper():
         self.colors = colors
 
         self.unpack_colors(self.colors)
-        self.target = {}
+        self.targets = []
         self.pos = np.array([0, 0, np.pi])
 
 
     def unpack_colors(self, colors):
         """Color settings"""
-        self.tolerance = np.array(self.colors["tolerance"][::-1])
-        self.robot = np.array(self.colors["robot"][::-1])
-        self.sock = np.array(self.colors["sock"]["main"][::-1])
-        self.sock_center = np.array(self.colors["sock"]["center"][::-1])
-        self.wall = np.array(self.colors["wall"][::-1])
-        self.obstacle = np.array(self.colors["obstacle"][::-1])
-        self.floor = np.array(self.colors["floor"][::-1])
+        self.tolerance = np.uint8(self.colors["tolerance"][::-1])
+        self.robot = np.uint8(self.colors["robot"][::-1])
+        self.sock = np.uint8(self.colors["sock"]["main"][::-1])
+        self.sock_center = np.uint8(self.colors["sock"]["center"][::-1])
+        self.wall = np.uint8(self.colors["wall"][::-1])
+        self.obstacle = np.uint8(self.colors["obstacle"][::-1])
+        self.floor = np.uint8(self.colors["floor"][::-1])
 
 
     def static_map(self, img):
@@ -30,20 +30,25 @@ class Mapper():
         self.map = np.zeros_like(img[:, :, 0])
 
         # walls
-        wall_mask = np.all(img > self.wall - self.tolerance, axis=2)
-        wall_mask += np.all((img > self.obstacle - self.tolerance) * \
-            (img < self.obstacle + self.tolerance), axis=2)
-        self.map[wall_mask] = 255
+        lowerb = tuple(map(int, (self.wall - self.tolerance)))
+        wall_mask = cv2.inRange(img, lowerb, (255,255,255))
+        # wall_mask = np.all(img > self.wall - self.tolerance, axis=2)
+        lowerb = tuple(map(int,self.obstacle - self.tolerance))
+        upperb = tuple(map(int,self.obstacle + self.tolerance))
+        wall_mask = cv2.bitwise_or( wall_mask, cv2.inRange(img, lowerb, upperb ))
+        self.map = wall_mask.copy()
 
         # robot
-        robot_mask = np.all((img > self.robot - 2*self.tolerance) * \
-            (img < self.robot + 2*self.tolerance), axis=2)
-
+        lowerb = tuple(map(int, self.robot - 2*self.tolerance))
+        upperb = tuple(map(int, self.robot + 2*self.tolerance))
+        robot_mask = cv2.inRange(img, lowerb, upperb)
+        
         # white wheels detected as wall, extend robot a little to fix this
         ext = 2
         d = 2 * ext + 1
         robot_ext_mask = cv2.dilate(robot_mask.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_RECT, (d, d)))
-        self.map[robot_ext_mask>0] = 0
+        self.map = cv2.bitwise_and(self.map, cv2.bitwise_not(robot_ext_mask))
+        # self.map[robot_ext_mask>0] = 0
 
         # find robot sides
         hull = cv2.findContours(robot_ext_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0][:,-1]
@@ -54,15 +59,24 @@ class Mapper():
         self.map = cv2.dilate(self.map, cv2.getStructuringElement(cv2.MORPH_RECT, (d, d)))
 
         # find socks
-        sock_main_mask = np.all((img > self.sock - self.tolerance) * \
-            (img < self.sock + self.tolerance), axis=2)
+        # sock_main_mask = np.all((img > self.sock - self.tolerance) * \
+        #     (img < self.sock + self.tolerance), axis=2)
+        lowerb = tuple(map(int, self.sock - self.tolerance))
+        upperb = tuple(map(int, self.sock + self.tolerance))
+        sock_main_mask = cv2.inRange((img, tuple(self.sock - self.tolerance),  
+                                           tuple(self.sock + self.tolerance)) )
+
         sock_main_mask = cv2.dilate(sock_main_mask.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)))
-        self.map[sock_main_mask>0] = 255
+        self.map = cv2.bitwise_and( self.map, cv2.bitwise_not(sock_main_mask) )
 
-        sock_center_mask = np.all((img > self.sock_center - 2*self.tolerance) * \
-            (img < self.sock_center + 2*self.tolerance), axis=2)
-        self.map[sock_center_mask] = 255
+        lowerb = tuple(map(int,self.sock_center - 2*self.tolerance))
+        upperb = tuple(map(int,self.sock_center + 2*self.tolerance))
+        sock_center_mask = cv2.inRange(img, lowerb, upperb)
 
+        # self.map[sock_center_mask] = 255
+        self.map = cv2.bitwise_or( self.map, sock_center_mask )
+        cv2.imshow('sock_center_mask', sock_center_mask)
+        cv2.waitKey(5000)
         self.find_targets(sock_center_mask)
         self.make_cost_map(self.map)
         # make it out if class

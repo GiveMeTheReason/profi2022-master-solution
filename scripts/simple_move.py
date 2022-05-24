@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import time
 import numpy as np
@@ -9,11 +9,9 @@ import sys
 from pathlib import Path
 
 # REP_PATH = Path(os.getenv('CAM_22_ROS'))
-PYTHON_PATHS = [ '/usr/lib/python3/dist-packages', '/usr/lib/python3', '/usr/local/lib/python3.6/dist-packages' ]
-for path in PYTHON_PATHS:
-    sys.path.insert(0, path)
-
-print (sys.path)
+# PYTHON_PATHS = [ '/usr/lib/python3/dist-packages', '/usr/lib/python3', '/usr/local/lib/python3.6/dist-packages' ]
+# for path in PYTHON_PATHS:
+#     sys.path.insert(0, path)
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -21,9 +19,11 @@ from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 
-# import tf
+import tf
 from cv_bridge import CvBridge, CvBridgeError
 from tf.transformations import euler_from_quaternion
+
+print(os.path.abspath(os.getcwd()))
 
 from global_planner import Global_Planner
 from mapper import Mapper
@@ -33,15 +33,11 @@ from robot import Robot
 
 from utils import wrap_angle
 
-json_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "config/config.json")))
-file = json.load(json_file)
-layers, colors, mpc_params = file['model'], file['colors'], file['mpc']
-json_file.close()
-
 class Simple_KFC_bAssket():
 
     def __init__(self):
-        
+
+        self.cv_bridge = CvBridge()
         rospy.init_node('simple_mover', anonymous=True)
         rospy.on_shutdown(self.shutdown)
         self.listener = tf.TransformListener()
@@ -49,9 +45,7 @@ class Simple_KFC_bAssket():
         self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
         rospy.Subscriber("diff_drive_robot/camera1/image_raw", Image, self.camera_cb)
         rospy.Subscriber('odom', Odometry, self.odometry_callback )
-        rospy.Subscriber('monitor/is_sock_taken', Bool, self.sock_taken_callback)
-
-        self.cv_bridge = CvBridge()
+        rospy.Subscriber('monitor/is_sock_taken', Bool, self.sock_take_callback)
         
         self.sock_is_taken = False
         self.pos = np.array([0,0,0])
@@ -99,18 +93,20 @@ class Simple_KFC_bAssket():
          
 
     def camera_cb(self, msg):
-        try:
-            cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
+        pass
+        # try:
+        #     cv_image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
+        #     print(cv_image[80:90,80:90,0])
+        # except CvBridgeError as e:
+        #     rospy.logerr("CvBridge Error: {0}".format(e))
 
-        except CvBridgeError as e:
-            rospy.logerr("CvBridge Error: {0}".format(e))
-
-        arrow_len = 30
-        pt = self.pos.copy()
-        pt[2] = -pt[2]
-        pt2 = pt[:-1] + arrow_len * np.array(np.cos(pt[2]), np.sin(pt[2]))
-        cv2.arrowedLine(cv_image, tuple(pt[:-1].astype(np.int32)), tuple(pt2.astype(np.int32)), (0,255,0), 3)
-        self.show_image(cv_image)
+        # arrow_len = 30
+        # pt = self.pos.copy()
+        # pt[2] = -pt[2]
+        # pt2 = pt[:-1] + arrow_len * np.array(np.cos(pt[2]), np.sin(pt[2]))
+        # cv2.arrowedLine(cv_image, tuple(pt[:-1].astype(np.int32)), tuple(pt2.astype(np.int32)), (0,255,0), 3)
+        # self.show_image(cv_image)
+        # rospy.sleep(0.1)
 
 
     def show_image(self, img):
@@ -136,9 +132,19 @@ class Simple_KFC_bAssket():
 
 if __name__ == '__main__' :
     
+    json_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, "config/config.json")))
+    file = json.load(json_file)
+    layers, colors, mpc_params = file['model'], file['colors'], file['mpc']
+    json_file.close()
+
     simple_mover = Simple_KFC_bAssket()
+    # get colors
     mapper = Mapper( colors )
-    sock_chooser = Sock_Chooser(mapper.targets) # ???
+    cv_image = simple_mover.cv_bridge.imgmsg_to_cv2(rospy.wait_for_message('diff_drive_robot/camera1/image_raw', Image, 5), "bgr8")
+    cv2.imshow('init image', cv_image)
+    cv2.waitKey(3000)
+    mapper.static_map( cv_image )
+    sock_chooser = Sock_Chooser(mapper.targets)
     simple_mover.pass_sock_chooser( sock_chooser )
 
     robot = Robot(dim_observation = layers['dim_observation'], dim_action = layers['dim_action'], dim_hidden = layers['dim_hidden'])
